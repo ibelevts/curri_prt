@@ -1,4 +1,3 @@
-#!/usr/bin/python
 import time
 import http.server
 from socketserver import ThreadingMixIn
@@ -7,7 +6,10 @@ from socketserver import BaseServer
 #from OpenSSL import SSL
 import threading
 import string,os,sys
-from saxXacmlHandler import *
+# from saxXacmlHandler import *
+import string
+import xml.sax
+from xml.sax.handler import *
 
 continueResponse = '<?xml encoding="UTF-8" version="1.0"?><Response><Result><Decision>Permit</Decision><Status></Status><Obligations><Obligation FulfillOn="Permit" ObligationId="urn:cisco:xacml:policy-attribute"><AttributeAssignment AttributeId="Policy:simplecontinue"><AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">&lt;cixml ver="1.0"&gt;&lt;continue&gt;&lt;/continue&gt; &lt;/cixml&gt;</AttributeValue></AttributeAssignment></Obligation></Obligations></Result></Response>'
 
@@ -17,7 +19,7 @@ continueWithModifyIngEdResponse = '<?xml encoding="UTF-8" version="1.0"?><Respon
 
 denyResponse = '<?xml encoding="UTF-8" version="1.0"?><Response><Result><Decision>Deny</Decision><Status></Status><Obligations><Obligation FulfillOn="Deny" ObligationId="urn:cisco:xacml:response-qualifier"><AttributeAssignment AttributeId="urn:cisco:xacml:is-resource"><AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">resource</AttributeValue></AttributeAssignment></Obligation></Obligations></Result></Response>'
 
-divertResponse = '<?xml encoding="UTF-8" version="1.0"?> <Response><Result><Decision>Permit</Decision><Obligations><Obligation FulfillOn="Permit" ObligationId="continue.simple"><AttributeAssignment AttributeId="Policy:continue.simple"><AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">&lt;cixml ver="1.0"&gt;&lt;divert&gt;&lt;destination&gt;232326&lt;/destination&gt;&lt;/divert&gt;&lt;reason&gt;chaperone&lt;/reason&gt;&lt;/cixml&gt;</AttributeValue></AttributeAssignment></Obligation></Obligations></Result></Response>'
+divertResponse = '<?xml encoding="UTF-8" version="1.0"?> <Response><Result><Decision>Permit</Decision><Obligations><Obligation FulfillOn="Permit" ObligationId="continue.simple"><AttributeAssignment AttributeId="Policy:continue.simple"><AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">&lt;cixml ver="1.0"&gt;&lt;divert&gt;&lt;destination&gt;{}&lt;/destination&gt;&lt;/divert&gt;&lt;reason&gt;chaperone&lt;/reason&gt;&lt;/cixml&gt;</AttributeValue></AttributeAssignment></Obligation></Obligations></Result></Response>'
 
 notApplicableResponse = '<?xml encoding="UTF-8" version="1.0"?> <Response> <Result> <Decision>NotApplicable</Decision> <Status> <StatusCode Value="The PDP is not protecting the application requested for, please associate the application with the Entitlement Server in the PAP and retry"/> </Status> <Obligations> <Obligation ObligationId="PutInCache" FulfillOn="Deny"> <AttributeAssignment AttributeId="resource" DataType="http://www.w3.org/2001/XMLSchema#anyURI">CISCO:UC:VoiceOrVideoCall</AttributeAssignment> </Obligation>  </Obligations> </Result> </Response>'
 
@@ -46,9 +48,9 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         parser.setContentHandler(xacmlParser)
         try:
             length = int(s.headers.get('content-length'))
-            print('length ', length)
+            #print('length ', length)
             postdata = s.rfile.read(length)
-            print(postdata)
+            #print(postdata)
             fd = open('tempXacmlReq.xml', "w")
             fd.write(postdata.decode("utf-8"))
             fd.close()
@@ -65,8 +67,8 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             print('send response', continueWithAnnouncementResponse)
             MyHandler.send_xml(s, continueWithAnnouncementResponse)
         elif (xacmlParser.callingNumber() == '48123211885') and (xacmlParser.calledNumber() == '232325'):
-            #print('send response', divertResponse)
-            MyHandler.send_xml(s, divertResponse)
+            print(f'Diverting to 232326')
+            MyHandler.send_xml(s, divertResponse.format('232326'))
         elif (xacmlParser.callingNumber() == '1000') and (xacmlParser.calledNumber() == '2000'):
             print('send response', continueWithModifyIngEdResponse)
             MyHandler.send_xml(s, continueWithModifyIngEdResponse)
@@ -92,6 +94,66 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
 
 class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
     threading.daemon_threads = True
+
+class XacmlHandler(ContentHandler):
+    """Crude extractor for XACML document"""
+    def __init__(self):
+        self.isCallingNumber = 0
+        self.isCalledNumber = 0
+        self.isTransformedCgpn = 0
+        self.isTransformedCdpn = 0
+        self.CallingNumber = 0
+        self.CalledNumber = 0
+        self.TransformedCgpn = 0
+        self.TransformedCdpn = 0
+        
+    def startDocument(self):
+        print('--- Begin Document ---')
+        
+    def startElement(self, name, attrs):
+        if name == 'Attribute':
+            self.attrs = attrs.get('AttributeId')
+            print('AttributeId', self.attrs)
+        elif name == 'AttributeValue':
+            if self.attrs == 'urn:Cisco:uc:1.0:callingnumber':
+                self.isCallingNumber = 1
+            elif self.attrs == 'urn:Cisco:uc:1.0:callednumber':
+                self.isCalledNumber = 1
+            elif self.attrs == 'urn:Cisco:uc:1.0:transformedcgpn':
+                self.isTransformedCgpn = 1
+            elif self.attrs == 'urn:Cisco:uc:1.0:transformedcdpn':
+                self.isTransformedCdpn = 1
+                
+    def endElement(self, name):
+        if name == 'Request':
+            # format xacml response based on called/calling numbers
+            print('endElement Request')
+            
+    def characters(self, ch):
+        if self.isCallingNumber == 1:
+             self.CallingNumber = ch
+             print('CallingNumber ' + ch)
+             self.isCallingNumber = 0
+        if self.isCalledNumber == 1:
+             self.CalledNumber = ch
+             print('CalledNubmer ' + ch)
+             self.isCalledNumber = 0
+        if self.isTransformedCgpn == 1:
+             self.TransformedCgpn = ch
+             print('TransformedCgpn ' + ch)
+             self.isTransformedCgpn = 0
+        if self.isTransformedCdpn == 1:
+             self.TransformedCdpn = ch
+             print('TransformedCdpn ' + ch)
+             self.isTransformedCdpn = 0
+
+    def callingNumber(self): return self.CallingNumber
+
+    def calledNumber(self): return self.CalledNumber
+
+    def transformedCgpn(self): return self.TransformedCgpn
+
+    def transformedCdpn(self): return self.TransformedCdpn
 
 if __name__ == '__main__':
     args = sys.argv[1:]
