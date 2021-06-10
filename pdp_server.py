@@ -45,14 +45,15 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         xacmlParser = XacmlHandler()
         parser.setContentHandler(xacmlParser)
         try:
-            length = int(s.headers.getheader('content-length'))
+            length = int(s.headers.get('content-length'))
             print('length ', length)
             postdata = s.rfile.read(length)
             print(postdata)
             fd = open('tempXacmlReq.xml', "w")
-            fd.write(postdata)
+            fd.write(postdata.decode("utf-8"))
             fd.close()
         except:
+            print('failure')
             pass
 
         parser.parse("tempXacmlReq.xml")
