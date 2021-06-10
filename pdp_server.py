@@ -26,8 +26,8 @@ indeterminateResponse = '<?xml encoding="UTF-8" version="1.0"?> :<Response><Resu
 class MyHandler(http.server.BaseHTTPRequestHandler):
     def setup(s):
         s.connection = s.request
-        s.rfile = Socket.socket._fileobject(s.request, "rb", s.rbufsize)
-        s.wfile = Socket.socket._fileobject(s.request, "wb", s.wbufsize)
+        s.rfile = Socket.socket.makefile(s.request, "rb", s.rbufsize)
+        s.wfile = Socket.socket.makefile(s.request, "wb", s.wbufsize)
 
     def do_HEAD(s):
         s.send_response(200)
@@ -64,7 +64,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
             print('send response', continueWithAnnouncementResponse)
             MyHandler.send_xml(s, continueWithAnnouncementResponse)
         elif (xacmlParser.callingNumber() == '48123211885') and (xacmlParser.calledNumber() == '232325'):
-            print('send response', divertResponse)
+            #print('send response', divertResponse)
             MyHandler.send_xml(s, divertResponse)
         elif (xacmlParser.callingNumber() == '1000') and (xacmlParser.calledNumber() == '2000'):
             print('send response', continueWithModifyIngEdResponse)
@@ -86,7 +86,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         s.send_header("Connection", "Keep-Alive")
         s.send_header("Keep-Alive", "timeout = 20000   max = 100")
         s.end_headers()
-        s.wfile.write(text)
+        s.wfile.write(text.encode())
         s.wfile.flush()
 
 class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
