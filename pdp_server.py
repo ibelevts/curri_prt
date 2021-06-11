@@ -36,7 +36,7 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(s):
         message =  threading.currentThread().getName()
-        print(time.asctime(), "do_POST", "currentThread", message)
+        print(time.asctime(), "do_POST", "currentThread", message, 'from', s.client_address[0])
         length = int(s.headers.get('content-length'))
         postdata = s.rfile.read(length)
         root = ET.fromstring(postdata.decode("utf-8"))[0]
@@ -59,7 +59,7 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
         s.wfile.write(text.encode())
         s.wfile.flush()
 
-class ThreadedHTTPServer(http.server.ThreadingHTTPServer, http.server.HTTPServer):
+class ThreadedHTTPServer(http.server.ThreadingHTTPServer):
     threading.daemon_threads = True
 
 
