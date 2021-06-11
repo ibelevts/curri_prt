@@ -1,12 +1,11 @@
+#!/usr/local/bin/python3
 import time
 import http.server
-from socketserver import ThreadingMixIn
 import socket as Socket
+from socketserver import ThreadingMixIn
 from socketserver import BaseServer
-#from OpenSSL import SSL
 import threading
 import string,os,sys
-# from saxXacmlHandler import *
 import string
 import xml.sax
 from xml.sax.handler import *
@@ -25,7 +24,7 @@ notApplicableResponse = '<?xml encoding="UTF-8" version="1.0"?> <Response> <Resu
 
 indeterminateResponse = '<?xml encoding="UTF-8" version="1.0"?> :<Response><Result ResourceId=""><Decision>Indeterminate</Decision><Status><StatusCode Value="urn:cisco:xacml:status:missing-attribute"/><StatusMessage>Required subjectid,resourceid,actionid not present in the request</StatusMessage><StatusDetail>Request failed</StatusDetail></Status></Result></Response>'
 
-class MyHandler(http.server.BaseHTTPRequestHandler):
+class curri_handler(http.server.BaseHTTPRequestHandler):
     def setup(s):
         s.connection = s.request
         s.rfile = Socket.socket.makefile(s.request, "rb", s.rbufsize)
@@ -38,7 +37,6 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         s.send_header("Keep-Alive", "timeout = 20000   max = 100")
         s.end_headers()
         message =  threading.currentThread().getName()
-        print("currentThread", message)
 
     def do_POST(s):
         message =  threading.currentThread().getName()
@@ -48,9 +46,7 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
         parser.setContentHandler(xacmlParser)
         try:
             length = int(s.headers.get('content-length'))
-            #print('length ', length)
             postdata = s.rfile.read(length)
-            #print(postdata)
             fd = open('tempXacmlReq.xml', "w")
             fd.write(postdata.decode("utf-8"))
             fd.close()
@@ -62,25 +58,25 @@ class MyHandler(http.server.BaseHTTPRequestHandler):
 
         if (xacmlParser.callingNumber() == '1000') and (xacmlParser.calledNumber() == '2000'):
             print('send response', denyResponse)
-            MyHandler.send_xml(s, denyResponse)
+            curri_handler.send_xml(s, denyResponse)
         elif (xacmlParser.callingNumber() == '1000') and (xacmlParser.calledNumber() == '2000'):
             print('send response', continueWithAnnouncementResponse)
-            MyHandler.send_xml(s, continueWithAnnouncementResponse)
+            curri_handler.send_xml(s, continueWithAnnouncementResponse)
         elif (xacmlParser.callingNumber() == '48123211885') and (xacmlParser.calledNumber() == '232325'):
             print(f'Diverting to 232326')
-            MyHandler.send_xml(s, divertResponse.format('232326'))
+            curri_handler.send_xml(s, divertResponse.format('232326'))
         elif (xacmlParser.callingNumber() == '1000') and (xacmlParser.calledNumber() == '2000'):
             print('send response', continueWithModifyIngEdResponse)
-            MyHandler.send_xml(s, continueWithModifyIngEdResponse)
+            curri_handler.send_xml(s, continueWithModifyIngEdResponse)
         elif (xacmlParser.callingNumber() == '1000') and (xacmlParser.calledNumber() == '2000'):
             print('send response', notApplicableResponse)
-            MyHandler.send_xml(s, notApplicableResponse)
+            curri_handler.send_xml(s, notApplicableResponse)
         elif (xacmlParser.callingNumber() == '1000') and (xacmlParser.calledNumber() == '2000'):
             print('send response', indeterminateResponse)
-            MyHandler.send_xml(s, indeterminateResponse)
+            curri_handler.send_xml(s, indeterminateResponse)
         else:
             print('send response', continueResponse)
-            MyHandler.send_xml(s, continueResponse)
+            curri_handler.send_xml(s, continueResponse)
 
     def send_xml(s, text, code=200):
         s.send_response(code)
@@ -96,7 +92,6 @@ class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
     threading.daemon_threads = True
 
 class XacmlHandler(ContentHandler):
-    """Crude extractor for XACML document"""
     def __init__(self):
         self.isCallingNumber = 0
         self.isCalledNumber = 0
@@ -108,12 +103,13 @@ class XacmlHandler(ContentHandler):
         self.TransformedCdpn = 0
         
     def startDocument(self):
-        print('--- Begin Document ---')
+        pass
+        #print('--- Begin Document ---')
         
     def startElement(self, name, attrs):
         if name == 'Attribute':
             self.attrs = attrs.get('AttributeId')
-            print('AttributeId', self.attrs)
+            #print('AttributeId', self.attrs)
         elif name == 'AttributeValue':
             if self.attrs == 'urn:Cisco:uc:1.0:callingnumber':
                 self.isCallingNumber = 1
@@ -126,8 +122,9 @@ class XacmlHandler(ContentHandler):
                 
     def endElement(self, name):
         if name == 'Request':
+            pass
             # format xacml response based on called/calling numbers
-            print('endElement Request')
+            # print('endElement Request')
             
     def characters(self, ch):
         if self.isCallingNumber == 1:
@@ -140,11 +137,11 @@ class XacmlHandler(ContentHandler):
              self.isCalledNumber = 0
         if self.isTransformedCgpn == 1:
              self.TransformedCgpn = ch
-             print('TransformedCgpn ' + ch)
+             #print('TransformedCgpn ' + ch)
              self.isTransformedCgpn = 0
         if self.isTransformedCdpn == 1:
              self.TransformedCdpn = ch
-             print('TransformedCdpn ' + ch)
+             #print('TransformedCdpn ' + ch)
              self.isTransformedCdpn = 0
 
     def callingNumber(self): return self.CallingNumber
@@ -171,7 +168,7 @@ if __name__ == '__main__':
     print("HTTP://HOST_NAME:PORT", PROTO, '://', HOST_NAME, ':', PORT)
 
     if PROTO == 'http' or PROTO == 'HTTP':
-        httpd = ThreadedHTTPServer((HOST_NAME, PORT_NUM), MyHandler)
+        httpd = ThreadedHTTPServer((HOST_NAME, PORT_NUM), curri_handler)
     else:
         print('invalid proto', PROTO, 'required http')
         sys.exit(1)
