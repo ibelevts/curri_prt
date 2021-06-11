@@ -1,14 +1,9 @@
 #!/usr/local/bin/python3
 import time
 import http.server
-import socket as Socket
-from socketserver import ThreadingMixIn
-from socketserver import BaseServer
+import socket
 import threading
-import string,os,sys
-import string
-import xml.sax
-from xml.sax.handler import *
+import sys
 import xml.etree.ElementTree as ET
 
 continueResponse = '<?xml encoding="UTF-8" version="1.0"?><Response><Result><Decision>Permit</Decision><Status></Status><Obligations><Obligation FulfillOn="Permit" ObligationId="urn:cisco:xacml:policy-attribute"><AttributeAssignment AttributeId="Policy:simplecontinue"><AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">&lt;cixml ver="1.0"&gt;&lt;continue&gt;&lt;/continue&gt; &lt;/cixml&gt;</AttributeValue></AttributeAssignment></Obligation></Obligations></Result></Response>'
@@ -28,8 +23,8 @@ indeterminateResponse = '<?xml encoding="UTF-8" version="1.0"?> :<Response><Resu
 class curri_handler(http.server.BaseHTTPRequestHandler):
     def setup(s):
         s.connection = s.request
-        s.rfile = Socket.socket.makefile(s.request, "rb", s.rbufsize)
-        s.wfile = Socket.socket.makefile(s.request, "wb", s.wbufsize)
+        s.rfile = socket.socket.makefile(s.request, "rb", s.rbufsize)
+        s.wfile = socket.socket.makefile(s.request, "wb", s.wbufsize)
 
     def do_HEAD(s):
         s.send_response(200)
@@ -64,7 +59,7 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
         s.wfile.write(text.encode())
         s.wfile.flush()
 
-class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
+class ThreadedHTTPServer(http.server.ThreadingHTTPServer, http.server.HTTPServer):
     threading.daemon_threads = True
 
 
@@ -94,6 +89,7 @@ if __name__ == '__main__':
         httpd.serve_forever()
     except KeyboardInterrupt:
         httpd.server_close()
+        print('\nShutting down...')
         sys.exit()
 		
     print(time.asctime(), "Server Stopped - %s:%s" % (HOST_NAME, PORT))
