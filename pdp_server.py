@@ -44,6 +44,7 @@ class request_handler(http.server.BaseHTTPRequestHandler):
             s.send_response(200)
             s.send_header("Connection", "close")
             s.end_headers()
+            s.close_connection
             print(time.asctime(), f'Processed PRT from {parts[0].text[2:]}')
             return
         elif s.path == '/pdp/AuthenticationEndPoint':
@@ -95,24 +96,20 @@ class ThreadedHTTPServer(http.server.ThreadingHTTPServer):
 
 if __name__ == '__main__':
     args = sys.argv[1:]
-    REQARGS = 3
+    REQARGS = 2
     
     if len(args) < REQARGS:
-        print("Usage:",sys.argv[0], "<HOST_NAME> <PORT> http")
+        print("Usage:",sys.argv[0], "<HOST_NAME> <PORT>")
         sys.exit(1)
 
     HOST_NAME = sys.argv[1]
     PORT      = sys.argv[2]
     PORT_NUM  = int(PORT)
-    PROTO     = sys.argv[3]
-    
-    print("HTTP://HOST_NAME:PORT", PROTO, '://', HOST_NAME, ':', PORT)
 
-    if PROTO == 'http' or PROTO == 'HTTP':
-        httpd = ThreadedHTTPServer((HOST_NAME, PORT_NUM), request_handler)
-    else:
-        print('invalid proto', PROTO, 'required http')
-        sys.exit(1)
+    
+    #print(f'http://{HOST_NAME}:{PORT}')
+    httpd = ThreadedHTTPServer((HOST_NAME, PORT_NUM), request_handler)
+
 
     print(time.asctime(), "HTTP CURRI/PRT Server Started - %s:%s" % (HOST_NAME, PORT))
     try:
