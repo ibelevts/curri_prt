@@ -20,7 +20,7 @@ notApplicableResponse = '<?xml version="1.0" encoding="UTF-8"?> <Response> <Resu
 
 indeterminateResponse = '<?xml version="1.0" encoding="UTF-8"?> :<Response><Result ResourceId=""><Decision>Indeterminate</Decision><Status><StatusCode Value="urn:cisco:xacml:status:missing-attribute"/><StatusMessage>Required subjectid,resourceid,actionid not present in the request</StatusMessage><StatusDetail>Request failed</StatusDetail></Status></Result></Response>'
 
-class curri_handler(http.server.BaseHTTPRequestHandler):
+class request_handler(http.server.BaseHTTPRequestHandler):
     def log_request(self, code): 
         pass
 
@@ -33,9 +33,7 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
         message =  threading.currentThread().getName()
 
     def do_POST(s):
-        if s.path == '/pdp/AuthenticationEndPoint':
-            pass
-        else:
+        if s.path == '/prt':
             message =  threading.currentThread().getName()
             postdata = s.rfile.read(int(s.headers.get('Content-Length')))
             parts = decoder.MultipartDecoder(postdata, s.headers.get('content-type')).parts
@@ -48,22 +46,27 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
             s.end_headers()
             print(time.asctime(), f'Processed PRT from {parts[0].text[2:]}')
             return
-        message =  threading.currentThread().getName()
-        postdata = s.rfile.read(int(s.headers.get('Content-Length')))
-        root = ET.fromstring(postdata.decode("utf-8"))[0]
-        for element in root:
-            if element.attrib['AttributeId'].split(':')[-1] == 'callingnumber':
-                number_a = element[0].text
-            elif element.attrib['AttributeId'].split(':')[-1] == 'callednumber':
-                number_b = element[0].text
+        elif s.path == '/pdp/AuthenticationEndPoint':
+            message =  threading.currentThread().getName()
+            postdata = s.rfile.read(int(s.headers.get('Content-Length')))
+            root = ET.fromstring(postdata.decode("utf-8"))[0]
+            for element in root:
+                if element.attrib['AttributeId'].split(':')[-1] == 'callingnumber':
+                    number_a = element[0].text
+                elif element.attrib['AttributeId'].split(':')[-1] == 'callednumber':
+                    number_b = element[0].text
+                else:
+                    continue
+            if number_a == '48123211885' and number_b == '232325':
+                print(time.asctime(), f'Diverting {number_a} calling {number_b} to 232326')
+                request_handler.send_xml(s, divertResponse.format('232326'))
             else:
-                continue
-        if number_a == '48123211885' and number_b == '232325':
-            print(time.asctime(), f'Diverting {number_a} calling {number_b} to 232326')
-            curri_handler.send_xml(s, divertResponse.format('232326'))
+                print(time.asctime(), f'No specific action defined for {number_a} calling {number_b}, allow proceeding')
+                request_handler.send_xml(s, continueResponse)
+            return
         else:
-            print(time.asctime(), f'No specific action defined for {number_a} calling {number_b}, allow proceeding')
-            curri_handler.send_xml(s, continueResponse)
+            print('Not defined')
+            return
 
     def send_xml(s, text, code=200):
         s.send_response(code)
@@ -106,7 +109,7 @@ if __name__ == '__main__':
     print("HTTP://HOST_NAME:PORT", PROTO, '://', HOST_NAME, ':', PORT)
 
     if PROTO == 'http' or PROTO == 'HTTP':
-        httpd = ThreadedHTTPServer((HOST_NAME, PORT_NUM), curri_handler)
+        httpd = ThreadedHTTPServer((HOST_NAME, PORT_NUM), request_handler)
     else:
         print('invalid proto', PROTO, 'required http')
         sys.exit(1)
