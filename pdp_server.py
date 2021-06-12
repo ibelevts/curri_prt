@@ -1,7 +1,6 @@
 #!/usr/local/bin/python3
 import time
 import http.server
-import socket
 import threading
 import sys
 import xml.etree.ElementTree as ET
@@ -25,11 +24,6 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
     def log_request(self, code): 
         pass
 
-    def setup(s):
-        s.connection = s.request
-        s.rfile = socket.socket.makefile(s.request, "rb", s.rbufsize)
-        s.wfile = socket.socket.makefile(s.request, "wb", s.wbufsize)
-
     def do_HEAD(s):
         s.send_response(200)
         s.send_header("Content-type", "text/html")
@@ -43,11 +37,8 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
             pass
         else:
             message =  threading.currentThread().getName()
-            #print(time.asctime(), "do_POST", "currentThread", message, 'from', s.client_address[0], s.path)
-            content_type = s.headers.get('content-type')
-            length = int(s.headers.get('content-length'))
-            postdata = s.rfile.read(length)
-            parts = decoder.MultipartDecoder(postdata, content_type).parts
+            postdata = s.rfile.read(int(s.headers.get('Content-Length')))
+            parts = decoder.MultipartDecoder(postdata, s.headers.get('content-type')).parts
             filename = parts[3].headers[b'Content-Disposition'].decode('utf-8').split('; ')[2].split('"')[1]
             fd = open(filename, "wb")
             fd.write(parts[3].content)
@@ -56,12 +47,9 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
             s.send_header("Connection", "close")
             s.end_headers()
             print(time.asctime(), f'Processed PRT from {parts[0].text[2:]}')
-            #print(repr(parts[0].text))
             return
         message =  threading.currentThread().getName()
-        #print(time.asctime(), "do_POST", "currentThread", message, 'from', s.client_address[0], s.path)
-        length = int(s.headers.get('content-length'))
-        postdata = s.rfile.read(length)
+        postdata = s.rfile.read(int(s.headers.get('Content-Length')))
         root = ET.fromstring(postdata.decode("utf-8"))[0]
         for element in root:
             if element.attrib['AttributeId'].split(':')[-1] == 'callingnumber':
