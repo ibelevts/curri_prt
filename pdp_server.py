@@ -22,6 +22,9 @@ notApplicableResponse = '<?xml version="1.0" encoding="UTF-8"?> <Response> <Resu
 indeterminateResponse = '<?xml version="1.0" encoding="UTF-8"?> :<Response><Result ResourceId=""><Decision>Indeterminate</Decision><Status><StatusCode Value="urn:cisco:xacml:status:missing-attribute"/><StatusMessage>Required subjectid,resourceid,actionid not present in the request</StatusMessage><StatusDetail>Request failed</StatusDetail></Status></Result></Response>'
 
 class curri_handler(http.server.BaseHTTPRequestHandler):
+    def log_request(self, code): 
+        pass
+
     def setup(s):
         s.connection = s.request
         s.rfile = socket.socket.makefile(s.request, "rb", s.rbufsize)
@@ -37,34 +40,42 @@ class curri_handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(s):
         if s.path == '/pdp/AuthenticationEndPoint':
-            print('CURRI request')
             pass
         else:
             message =  threading.currentThread().getName()
-            print(time.asctime(), "do_POST", "currentThread", message, 'from', s.client_address[0], s.path)
+            #print(time.asctime(), "do_POST", "currentThread", message, 'from', s.client_address[0], s.path)
             content_type = s.headers.get('content-type')
             length = int(s.headers.get('content-length'))
             postdata = s.rfile.read(length)
             parts = decoder.MultipartDecoder(postdata, content_type).parts
             filename = parts[3].headers[b'Content-Disposition'].decode('utf-8').split('; ')[2].split('"')[1]
-            print(parts[0].text)
             fd = open(filename, "wb")
             fd.write(parts[3].content)
             fd.close()
+            s.send_response(200)
+            s.send_header("Connection", "close")
+            s.end_headers()
+            print(time.asctime(), f'Processed PRT from {parts[0].text[2:]}')
+            #print(repr(parts[0].text))
             return
         message =  threading.currentThread().getName()
-        print(time.asctime(), "do_POST", "currentThread", message, 'from', s.client_address[0], s.path)
+        #print(time.asctime(), "do_POST", "currentThread", message, 'from', s.client_address[0], s.path)
         length = int(s.headers.get('content-length'))
         postdata = s.rfile.read(length)
         root = ET.fromstring(postdata.decode("utf-8"))[0]
         for element in root:
             if element.attrib['AttributeId'].split(':')[-1] == 'callingnumber':
-                if element[0].text == '48123211885':
-                    print(f'Diverting caller {element[0].text} to 232326')
-                    curri_handler.send_xml(s, divertResponse.format('232326'))
-                else:
-                    print('No specific action defined, allow proceeding')
-                    curri_handler.send_xml(s, continueResponse)
+                number_a = element[0].text
+            elif element.attrib['AttributeId'].split(':')[-1] == 'callednumber':
+                number_b = element[0].text
+            else:
+                continue
+        if number_a == '48123211885' and number_b == '232325':
+            print(time.asctime(), f'Diverting {number_a} calling {number_b} to 232326')
+            curri_handler.send_xml(s, divertResponse.format('232326'))
+        else:
+            print(time.asctime(), f'No specific action defined for {number_a} calling {number_b}, allow proceeding')
+            curri_handler.send_xml(s, continueResponse)
 
     def send_xml(s, text, code=200):
         s.send_response(code)
@@ -112,12 +123,12 @@ if __name__ == '__main__':
         print('invalid proto', PROTO, 'required http')
         sys.exit(1)
 
-    print(time.asctime(), "HTTP CURRI Server Started - %s:%s" % (HOST_NAME, PORT))
+    print(time.asctime(), "HTTP CURRI/PRT Server Started - %s:%s" % (HOST_NAME, PORT))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         httpd.server_close()
         print('\nShutting down...')
+        print(time.asctime(), "Server Stopped - %s:%s" % (HOST_NAME, PORT))
         sys.exit()
 		
-    print(time.asctime(), "Server Stopped - %s:%s" % (HOST_NAME, PORT))
