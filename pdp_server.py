@@ -1,5 +1,5 @@
 #!/usr/local/bin/python3
-import time
+from datetime import datetime as time
 import http.server
 import threading
 import sys
@@ -38,7 +38,10 @@ class request_handler(http.server.BaseHTTPRequestHandler):
             message =  threading.currentThread().getName()
             postdata = s.rfile.read(int(s.headers.get('Content-Length')))
             parts = decoder.MultipartDecoder(postdata, s.headers.get('content-type')).parts
-            filename = re.search(r'filename="(.+?)\"', parts[3].headers[b'Content-Disposition'].decode('utf-8')).group(1)
+            try:
+                filename = re.search(r'filename="(.+?)\"', parts[3].headers[b'Content-Disposition'].decode('utf-8')).group(1)
+            except AttributeError:
+                filename = f'prt-{time.now().strftime("%Y%m%d-%H%M%S")}-{parts[0].text[5:]}.tar.gz'
             fd = open(filename, "wb")
             fd.write(parts[3].content)
             fd.close()
@@ -46,7 +49,7 @@ class request_handler(http.server.BaseHTTPRequestHandler):
             s.send_header("Connection", "close")
             s.end_headers()
             s.close_connection
-            print(time.asctime(), f'Processed PRT from {parts[0].text[2:]}')
+            print(time.now().strftime("%Y-%m-%d_%H-%M-%S"), f'Processed PRT from {parts[0].text[2:]}')
             return
         elif s.path == '/pdp/AuthenticationEndPoint':
             message =  threading.currentThread().getName()
@@ -60,10 +63,10 @@ class request_handler(http.server.BaseHTTPRequestHandler):
                 else:
                     continue
             if number_a == '48123211885' and number_b == '232325':
-                print(time.asctime(), f'Diverting {number_a} calling {number_b} to 232326')
+                print(time.now().strftime("%Y-%m-%d_%H-%M-%S"), f'Diverting {number_a} calling {number_b} to 232326')
                 request_handler.send_xml(s, divertResponse.format('232326'))
             else:
-                print(time.asctime(), f'No specific action defined for {number_a} calling {number_b}, allow proceeding')
+                print(time.now().strftime("%Y-%m-%d_%H-%M-%S"), f'No specific action defined for {number_a} calling {number_b}, allow proceeding')
                 request_handler.send_xml(s, continueResponse)
             return
         else:
@@ -112,12 +115,12 @@ if __name__ == '__main__':
     httpd = ThreadedHTTPServer((HOST_NAME, PORT_NUM), request_handler)
 
 
-    print(time.asctime(), "HTTP CURRI/PRT Server Started - %s:%s" % (HOST_NAME, PORT))
+    print(time.now().strftime("%Y-%m-%d_%H-%M-%S"), "HTTP CURRI/PRT Server Started - %s:%s" % (HOST_NAME, PORT))
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
         httpd.server_close()
         print('\nShutting down...')
-        print(time.asctime(), "Server Stopped - %s:%s" % (HOST_NAME, PORT))
+        print(time.now().strftime("%Y-%m-%d_%H-%M-%S"), "Server Stopped - %s:%s" % (HOST_NAME, PORT))
         sys.exit()
 		
