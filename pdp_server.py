@@ -3,6 +3,7 @@ import time
 import http.server
 import threading
 import sys
+import re
 import xml.etree.ElementTree as ET
 from requests_toolbelt.multipart import decoder
 
@@ -37,7 +38,7 @@ class request_handler(http.server.BaseHTTPRequestHandler):
             message =  threading.currentThread().getName()
             postdata = s.rfile.read(int(s.headers.get('Content-Length')))
             parts = decoder.MultipartDecoder(postdata, s.headers.get('content-type')).parts
-            filename = parts[3].headers[b'Content-Disposition'].decode('utf-8').split('; ')[2].split('"')[1]
+            filename = re.search(r'filename="(.+?)\"', parts[3].headers[b'Content-Disposition'].decode('utf-8')).group(1)
             fd = open(filename, "wb")
             fd.write(parts[3].content)
             fd.close()
