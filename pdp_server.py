@@ -2,7 +2,7 @@
 from datetime import datetime as time
 import http.server
 import threading
-import sys
+import sys, os
 import re
 import xml.etree.ElementTree as ET
 from requests_toolbelt.multipart import decoder
@@ -22,6 +22,7 @@ notApplicableResponse = '<?xml version="1.0" encoding="UTF-8"?><Response> <Resul
 indeterminateResponse = '<?xml version="1.0" encoding="UTF-8"?><Response><Result ResourceId=""><Decision>Indeterminate</Decision><Status><StatusCode Value="urn:cisco:xacml:status:missing-attribute"/><StatusMessage>Required subjectid,resourceid,actionid not present in the request</StatusMessage><StatusDetail>Request failed</StatusDetail></Status></Result></Response>'
 
 class request_handler(http.server.BaseHTTPRequestHandler):
+
     def log_request(self, code): 
         pass
 
@@ -34,16 +35,17 @@ class request_handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(s):
         if s.path == '/prt':
-            request_id = f'{time.now().strftime("%Y-%m-%d_%H-%M-%S")} PRT POST on {threading.currentThread().getName()} from {s.client_address[0]}:{s.client_address[1]}'
+            request_id = f'{time.now().strftime("%Y-%m-%d_%H-%M-%S")} PRT POST from {s.client_address[0]}:{s.client_address[1]}'
             postdata = s.rfile.read(int(s.headers.get('Content-Length')))
             parts = decoder.MultipartDecoder(postdata, s.headers.get('content-type')).parts
             try:
                 filename = re.search('filename="(.+?)"', parts[3].headers[b'Content-Disposition'].decode('utf-8')).group(1)
             except AttributeError:
                 filename = f'prt-{time.now().strftime("%Y%m%d-%H%M%S")}-{parts[0].text[5:]}.tar.gz'
-            fd = open(filename, "wb")
+            fd = open(f'Reports/{filename}', "wb")
             fd.write(parts[3].content)
             fd.close()
+            s.handle_expect_100()
             s.send_response(200)
             s.send_header("Connection", "close")
             s.end_headers()
@@ -51,7 +53,7 @@ class request_handler(http.server.BaseHTTPRequestHandler):
             print(request_id, f'Processed PRT from {parts[0].text[2:]}')
             return
         elif s.path == '/pdp/AuthenticationEndPoint':
-            request_id = f'{time.now().strftime("%Y-%m-%d_%H-%M-%S")} CURRI request on {threading.currentThread().getName()} from {s.client_address[0]}:{s.client_address[1]}'
+            request_id = f'{time.now().strftime("%Y-%m-%d_%H-%M-%S")} CURRI request from {s.client_address[0]}:{s.client_address[1]}'
             postdata = s.rfile.read(int(s.headers.get('Content-Length')))
             root = ET.fromstring(postdata.decode("utf-8"))[0]
             for element in root:
@@ -110,6 +112,10 @@ if __name__ == '__main__':
     HOST_NAME = sys.argv[1]
     PORT      = sys.argv[2]
     PORT_NUM  = int(PORT)
+
+    prtdir = os.path.dirname('Reports/') # Creates folder and the file for corrected devices logging (if doesn't exists)
+    if not os.path.exists(prtdir):
+        os.makedirs(prtdir)
 
     
     #print(f'http://{HOST_NAME}:{PORT}')
