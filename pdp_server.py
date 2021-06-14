@@ -31,11 +31,10 @@ class request_handler(http.server.BaseHTTPRequestHandler):
         s.send_header("Connection", "Keep-Alive")
         s.send_header("Keep-Alive", "timeout = 20000   max = 100")
         s.end_headers()
-        message =  threading.currentThread().getName()
 
     def do_POST(s):
         if s.path == '/prt':
-            message =  threading.currentThread().getName()
+            request_id = f'{time.now().strftime("%Y-%m-%d_%H-%M-%S")} PRT POST on {threading.currentThread().getName()} from {s.client_address[0]}:{s.client_address[1]}'
             postdata = s.rfile.read(int(s.headers.get('Content-Length')))
             parts = decoder.MultipartDecoder(postdata, s.headers.get('content-type')).parts
             try:
@@ -49,10 +48,10 @@ class request_handler(http.server.BaseHTTPRequestHandler):
             s.send_header("Connection", "close")
             s.end_headers()
             s.close_connection
-            print(time.now().strftime("%Y-%m-%d_%H-%M-%S"), f'Processed PRT from {parts[0].text[2:]}')
+            print(request_id, f'Processed PRT from {parts[0].text[2:]}')
             return
         elif s.path == '/pdp/AuthenticationEndPoint':
-            message =  threading.currentThread().getName()
+            request_id = f'{time.now().strftime("%Y-%m-%d_%H-%M-%S")} CURRI request on {threading.currentThread().getName()} from {s.client_address[0]}:{s.client_address[1]}'
             postdata = s.rfile.read(int(s.headers.get('Content-Length')))
             root = ET.fromstring(postdata.decode("utf-8"))[0]
             for element in root:
@@ -63,11 +62,13 @@ class request_handler(http.server.BaseHTTPRequestHandler):
                 else:
                     continue
             if number_a == '48123211885' and number_b == '232325':
-                print(time.now().strftime("%Y-%m-%d_%H-%M-%S"), f'Diverting {number_a} calling {number_b} to 232326')
+                action_string = f' Diverting {number_a} calling {number_b} to 232326'
                 request_handler.send_xml(s, divertResponse.format('232326'))
+                print(request_id, action_string)
             else:
-                print(time.now().strftime("%Y-%m-%d_%H-%M-%S"), f'No specific action defined for {number_a} calling {number_b}, allow proceeding')
+                action_string = f' No specific action defined for {number_a} calling {number_b}, allow proceeding'
                 request_handler.send_xml(s, continueResponse)
+                print(request_id, action_string)
             return
         else:
             print('Not defined')
