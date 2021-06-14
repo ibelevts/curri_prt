@@ -15,11 +15,11 @@ continueWithModifyIngEdResponse = '<?xml version="1.0" encoding="UTF-8"?><Respon
 
 denyResponse = '<?xml version="1.0" encoding="UTF-8"?><Response><Result><Decision>Deny</Decision><Status></Status><Obligations><Obligation FulfillOn="Deny" ObligationId="urn:cisco:xacml:response-qualifier"><AttributeAssignment AttributeId="urn:cisco:xacml:is-resource"><AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">resource</AttributeValue></AttributeAssignment></Obligation></Obligations></Result></Response>'
 
-divertResponse = '<?xml version="1.0" encoding="UTF-8"?> <Response><Result><Decision>Permit</Decision><Obligations><Obligation FulfillOn="Permit" ObligationId="continue.simple"><AttributeAssignment AttributeId="Policy:continue.simple"><AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">&lt;cixml ver="1.0"&gt;&lt;divert&gt;&lt;destination&gt;{}&lt;/destination&gt;&lt;/divert&gt;&lt;reason&gt;chaperone&lt;/reason&gt;&lt;/cixml&gt;</AttributeValue></AttributeAssignment></Obligation></Obligations></Result></Response>'
+divertResponse = '<?xml version="1.0" encoding="UTF-8"?><Response><Result><Decision>Permit</Decision><Obligations><Obligation FulfillOn="Permit" ObligationId="continue.simple"><AttributeAssignment AttributeId="Policy:continue.simple"><AttributeValue DataType="http://www.w3.org/2001/XMLSchema#string">&lt;cixml ver="1.0"&gt;&lt;divert&gt;&lt;destination&gt;{}&lt;/destination&gt;&lt;/divert&gt;&lt;reason&gt;chaperone&lt;/reason&gt;&lt;/cixml&gt;</AttributeValue></AttributeAssignment></Obligation></Obligations></Result></Response>'
 
-notApplicableResponse = '<?xml version="1.0" encoding="UTF-8"?> <Response> <Result> <Decision>NotApplicable</Decision> <Status> <StatusCode Value="The PDP is not protecting the application requested for, please associate the application with the Entitlement Server in the PAP and retry"/> </Status> <Obligations> <Obligation ObligationId="PutInCache" FulfillOn="Deny"> <AttributeAssignment AttributeId="resource" DataType="http://www.w3.org/2001/XMLSchema#anyURI">CISCO:UC:VoiceOrVideoCall</AttributeAssignment> </Obligation>  </Obligations> </Result> </Response>'
+notApplicableResponse = '<?xml version="1.0" encoding="UTF-8"?><Response> <Result><Decision>NotApplicable</Decision> <Status> <StatusCode Value="The PDP is not protecting the application requested for, please associate the application with the Entitlement Server in the PAP and retry"/> </Status> <Obligations> <Obligation ObligationId="PutInCache" FulfillOn="Deny"> <AttributeAssignment AttributeId="resource" DataType="http://www.w3.org/2001/XMLSchema#anyURI">CISCO:UC:VoiceOrVideoCall</AttributeAssignment> </Obligation>  </Obligations> </Result> </Response>'
 
-indeterminateResponse = '<?xml version="1.0" encoding="UTF-8"?> :<Response><Result ResourceId=""><Decision>Indeterminate</Decision><Status><StatusCode Value="urn:cisco:xacml:status:missing-attribute"/><StatusMessage>Required subjectid,resourceid,actionid not present in the request</StatusMessage><StatusDetail>Request failed</StatusDetail></Status></Result></Response>'
+indeterminateResponse = '<?xml version="1.0" encoding="UTF-8"?><Response><Result ResourceId=""><Decision>Indeterminate</Decision><Status><StatusCode Value="urn:cisco:xacml:status:missing-attribute"/><StatusMessage>Required subjectid,resourceid,actionid not present in the request</StatusMessage><StatusDetail>Request failed</StatusDetail></Status></Result></Response>'
 
 class request_handler(http.server.BaseHTTPRequestHandler):
     def log_request(self, code): 
@@ -39,7 +39,7 @@ class request_handler(http.server.BaseHTTPRequestHandler):
             postdata = s.rfile.read(int(s.headers.get('Content-Length')))
             parts = decoder.MultipartDecoder(postdata, s.headers.get('content-type')).parts
             try:
-                filename = re.search(r'filename="(.+?)\"', parts[3].headers[b'Content-Disposition'].decode('utf-8')).group(1)
+                filename = re.search('filename="(.+?)"', parts[3].headers[b'Content-Disposition'].decode('utf-8')).group(1)
             except AttributeError:
                 filename = f'prt-{time.now().strftime("%Y%m%d-%H%M%S")}-{parts[0].text[5:]}.tar.gz'
             fd = open(filename, "wb")

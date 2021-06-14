@@ -1,6 +1,4 @@
 resp.xml
-*.pyc
-tempXacmlReq.xml
-*.txt
 .DS_Store
 prt*
+README.txt
