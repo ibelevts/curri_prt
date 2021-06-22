@@ -27,11 +27,15 @@ class request_handler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_HEAD(s):
-        s.send_response(200)
-        s.send_header("Content-type", "text/html")
-        s.send_header("Connection", "Keep-Alive")
-        s.send_header("Keep-Alive", "timeout = 20000   max = 100")
-        s.end_headers()
+        try:
+            s.send_response(200)
+            s.send_header("Content-type", "text/html")
+            s.send_header("Connection", "Keep-Alive")
+            s.send_header("Keep-Alive", "timeout = 20000   max = 100")
+            s.end_headers()
+        except TimeoutError as error:
+            print(error)
+            pass
 
     def do_POST(s):
         if s.path == '/prt':
