@@ -91,15 +91,19 @@ class request_handler(http.server.BaseHTTPRequestHandler):
         s.wfile.flush()
 
     def do_GET(s):
-        print(s.path)
+        if s.path == '/favicon.ico':
+            return
+        request_id = f'{time.now().strftime("%Y-%m-%d_%H-%M-%S")} GET from {s.client_address[0]}:{s.client_address[1]}'
         s.send_response(code=200)
-        s.send_header('Content-type', 'text/xml; charset="utf-8"')
-        s.send_header('Content-Length', str(len('This is a test message')))
+        s.send_header('Content-type', 'text/html; charset="utf-8"')
+        s.send_header('Content-Length', str(len('<html><head><title>CURRI_SRV</title></head><body><p>It works!</p></body></html>')))
         s.send_header("Connection", "Keep-Alive")
         s.send_header("Keep-Alive", "timeout = 20000   max = 100")
         s.end_headers()
-        s.wfile.write('<html><head><title>Simple Python Http Server</title></head><body><p>This is a test.</p></body></html>'.encode())
-        s.wfile.flush()    
+        s.wfile.write('<html><head><title>CURRI_SRV</title></head><body><p>It works!</p></body></html>'.encode())
+        s.wfile.flush()  
+        print(request_id)
+        return  
 
 class ThreadedHTTPServer(http.server.ThreadingHTTPServer):
     threading.daemon_threads = True
